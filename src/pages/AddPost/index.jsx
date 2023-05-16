@@ -5,13 +5,14 @@ import Button from '@mui/material/Button';
 import SimpleMDE from 'react-simplemde-editor';
 import { useSelector } from 'react-redux';
 import { selectIsAuth } from '../../redux/slices/auth';
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useParams } from "react-router-dom";
 import axios from "../../axios";
 
 import 'easymde/dist/easymde.min.css';
 import styles from './AddPost.module.scss';
 
 export const AddPost = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const isAuth = useSelector(selectIsAuth);
   const inputFileRef = React.useRef(null);
@@ -20,6 +21,8 @@ export const AddPost = () => {
   const [title, setTitle] = React.useState('');
   const [imageUrl, setImageUrl] = React.useState('');
   const [tags, setTags] = React.useState('');
+
+  const isEditing = Boolean(id);
 
   const handleChangeFile = async(event) => {
     try {
@@ -44,8 +47,13 @@ export const AddPost = () => {
         tags: tags.split(','),
         text
       };
-      const { data } = await axios.post('/posts', fields);
-      const id = data._id;
+
+      const { data } = isEditing 
+      ? await axios.patch(`/posts/${id}`, fields)
+      : await axios.post('/posts', fields);
+
+      const _id = isEditing ? id : data._id;
+      
       navigate(`/posts/${id}`);
     } 
     catch (error) {
@@ -53,6 +61,17 @@ export const AddPost = () => {
       alert('Ошибка при создании статьи');
     }
   };
+
+  React.useEffect(() => {
+    if (id) {
+      axios.get(`/posts/${id}`).then(({ data }) => {
+        setTitle(data.title);
+        setText(data.text);
+        setImageUrl(data.imageUrl);
+        setTags(data.tags.join(','));
+      });
+    }
+  }, []);
 
   const onClickRemoveImage = () => {
     setImageUrl();
@@ -142,7 +161,7 @@ export const AddPost = () => {
           variant="contained"
           onClick={onSubmit}
         >
-          Опубликовать
+          { isEditing ? 'Сохранить' : 'Опубликовать' }
         </Button>
         <a href="/">
           <Button 
